@@ -1,4 +1,6 @@
-import { Request, Response, NextFunction } from "express";
+import { NextFunction, Request, Response } from "express";
+import ApiError from "../utils/ApiError";
+import { HTTP_STATUS } from "../utils/httpStatus";
 
 interface RateLimitEntry {
    minuteRequests: number[];
@@ -9,8 +11,8 @@ export class RateLimiter {
    private limits: Map<string, RateLimitEntry>;
    private readonly MINUTE_LIMIT = 10;
    private readonly BURST_LIMIT = 5;
-   private readonly MINUTE_WINDOW = 60 * 1000; // 60 seconds
-   private readonly BURST_WINDOW = 10 * 1000; // 10 seconds
+   private readonly MINUTE_WINDOW = 60 * 1000;
+   private readonly BURST_WINDOW = 10 * 1000;
 
    constructor() {
       this.limits = new Map();
@@ -28,14 +30,9 @@ export class RateLimiter {
    middleware() {
       return (req: Request, res: Response, next: NextFunction) => {
          const identifier = this.getIdentifier(req);
-
+         console.log(`[RateLimiter] Request from identifier: ${identifier}`);
          if (this.isRateLimited(identifier)) {
-            return res.status(429).json({
-               success: false,
-               message: "Rate limit exceeded. Please try again later.",
-               error: "TOO_MANY_REQUESTS",
-               retryAfter: "10 seconds"
-            });
+            return ApiError.custom(next, HTTP_STATUS.TOO_MANY_REQUESTS, "Rate limit exceeded. Please try again later");
          }
 
          this.recordRequest(identifier);
@@ -79,3 +76,8 @@ export class RateLimiter {
       this.limits.clear();
    }
 }
+
+const rateLimiterInstance = new RateLimiter();
+export const rateLimiter = rateLimiterInstance.middleware();
+
+export const rateLimiterService = rateLimiterInstance;
