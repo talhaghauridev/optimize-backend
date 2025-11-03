@@ -1,19 +1,20 @@
-import bodyParser from "body-parser";
 import compression from "compression";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
 import { config } from "./config/app.config";
-// import errorMiddleware from "./middlewares/error.middleware";
-// import fileRoutes from "./routes/file.routes";
-// import userRoutes from "./routes/user.routes";
+import errorMiddleware from "./middleware/error.middleware";
+import routes from "./routes/routes";
+import ApiResponse from "./utils/ApiResponse";
+import ApiError from "./utils/ApiError";
+import { HTTP_STATUS } from "./utils/httpStatus";
 
 const app = express();
 
 const payloadLimit = "50mb";
 
-app.use(helmet(config.helemt));
+app.use(helmet(config.helmet));
 
 app.use(express.json({ limit: payloadLimit }));
 app.use(
@@ -29,46 +30,33 @@ app.use(morgan("dev"));
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
    if (err.status === 413 || err.code === "LIMIT_FILE_SIZE" || err.type === "entity.too.large") {
-      return res.status(413).json({
-         message: "File too large. Maximum size allowed is 50MB",
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
          success: false,
-         error: "PAYLOAD_TOO_LARGE"
+         statusCode: HTTP_STATUS.BAD_REQUEST,
+         message: "File too large. Maximum size allowed is 50MB"
       });
    }
    next(err);
 });
 
-app.use((req, res, next) => {
-   res.on("finish", () => {
-      if (res.statusCode === 413) {
-         res.json({
-            message: "File too large. Maximum size allowed is 5MB.",
-            success: false,
-            error: "FILE_TOO_LARGE"
-         });
-      }
-   });
-   next();
-});
+app.use("/api/v1", routes);
 
-// app.use("/api/v1/users", userRoutes);
-// app.use("/api/v1/files", fileRoutes);
-
-app.get("/", async (req, res) => {
+app.get("/", (req, res) => {
    console.log(req.headers["user-agent"]);
-   return res.status(200).json({
-      message: "Server is running",
-      success: true
-   });
+   return ApiResponse.success(
+      res,
+      {
+         message: "Server is running",
+         version: "1.0.0"
+      },
+      "Server is healthy"
+   );
 });
 
-app.use("*", (req, res) => {
-   return res.status(404).json({
-      message: "Route not found",
-      success: false
-   });
+app.use("*", (req, res, next) => {
+   return ApiError.notFound(next, `Route ${req.originalUrl} not found`);
 });
 
-// app.use(errorMiddleware);
+app.use(errorMiddleware);
 
 export default app;
