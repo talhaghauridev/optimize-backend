@@ -9,7 +9,7 @@ const cors: CorsOptions = {
    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
    allowedHeaders: ["Content-Type", "Authorization", "Accept"]
 };
-const helemt: HelmetOptions = {
+const helmet: HelmetOptions = {
    contentSecurityPolicy: env.NODE_ENV !== "development",
    crossOriginEmbedderPolicy: env.NODE_ENV !== "development"
 };
@@ -26,6 +26,6 @@ const _compression: CompressionOptions = {
 };
 export const config = {
    cors,
-   helemt,
+   helmet,
    compression: _compression
 };
